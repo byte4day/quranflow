@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quranflow"
+version = "0.1.0"
+description = "Background Qur'an recitation for terminals and coding agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "QuranFlow contributors"}]
+keywords = ["quran", "mpv", "cli", "codex", "cursor"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+dependencies = []
+
+[project.scripts]
+play-quran = "quranflow.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "ruff==0.16.10"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quranflow"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/scripts", "/docs", "/.agents", "/.cursor", "/.github", "/README.md", "/CONTRIBUTING.md", "/CHANGELOG.md", "/SECURITY.md", "/AGENTS.md", "/install.sh", "/uninstall.sh", "/pyproject.toml", "/LICENSE", "/.gitignore"]
+exclude = ["/video", "**/node_modules", "**/__pycache__", "**/*.pyc", "**/installation.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]

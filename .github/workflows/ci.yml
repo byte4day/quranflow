@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install pinned development dependencies
+        run: python -m pip install -e '.[dev]' 'hatchling==1.32.4'
+      - name: Lint and formatting
+        run: |
+          ruff check src tests scripts .agents
+          ruff format --check src tests scripts .agents
+      - name: Offline regression tests
+        run: python -m pytest -q
+      - name: Build and inspect distributions
+        run: |
+          python -m hatchling build
+          python scripts/check_artifacts.py
+      - name: Fresh wheel and integration installation
+        run: |
+          ./install.sh --home "$RUNNER_TEMP/quranflow-home" --offline --wheel dist/quranflow-0.1.0-py3-none-any.whl
+          "$RUNNER_TEMP/quranflow-home/.local/bin/play-quran" --version
+          "$RUNNER_TEMP/quranflow-home/.local/bin/play-quran" surahs --json > "$RUNNER_TEMP/surahs.json"
+          python -c 'import json, os; assert len(json.load(open(os.environ["RUNNER_TEMP"] + "/surahs.json"))) == 114'
+          ./uninstall.sh --home "$RUNNER_TEMP/quranflow-home"
