@@ -6,9 +6,7 @@ Choose a Surah and a reciter, then continue coding while mpv streams in the back
 QuranFlow is a small Linux Python CLI with no runtime Python dependencies, web UI,
 server or telemetry. Every interface uses the same playback engine.
 
-[![QuranFlow teaser — click to watch the 30-second video](media/quranflow-thumbnail.png)](media/quranflow-teaser.mp4)
-
-*30-second teaser ([MP4](media/quranflow-teaser.mp4)). Sound design only; no recitation.*
+▶ **[Watch the 30-second teaser](media/quranflow-teaser.mp4)** (MP4, sound design only, no recitation)
 
 ## Features
 
