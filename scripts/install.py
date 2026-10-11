@@ -31,6 +31,7 @@ def directories(home: Path) -> dict[str, Path]:
         "backups": data / "backups",
         "bin": home / ".local/bin/play-quran",
         "skill": home / ".agents/skills/play-quran",
+        "claude_skill": home / ".claude/skills/play-quran",
         "command": home / ".cursor/commands/play-quran.md",
     }
 
@@ -42,6 +43,9 @@ def allowed_files(paths: dict[str, Path]) -> set[Path]:
         paths["skill"] / "SKILL.md",
         paths["skill"] / "scripts/play_quran.py",
         paths["skill"] / "scripts/installation.json",
+        paths["claude_skill"] / "SKILL.md",
+        paths["claude_skill"] / "scripts/play_quran.py",
+        paths["claude_skill"] / "scripts/installation.json",
     }
 
 
@@ -214,22 +218,21 @@ def install(home: Path, *, offline: bool = False, wheel: Path | None = None) -> 
         f"os.execv({str(player)!r}, [{str(player)!r}, *sys.argv[1:]])\n"
     ).encode()
     sources: list[tuple[Path, bytes, int]] = [(paths["bin"], launcher, 0o755)]
-    skill = ROOT / ".agents/skills/play-quran"
-    sources.extend(
-        [
-            (paths["skill"] / "SKILL.md", (skill / "SKILL.md").read_bytes(), 0o644),
-            (
-                paths["skill"] / "scripts/play_quran.py",
-                (skill / "scripts/play_quran.py").read_bytes(),
-                0o755,
-            ),
-            (
-                paths["skill"] / "scripts/installation.json",
-                json.dumps({"executable": str(paths["bin"])}).encode(),
-                0o600,
-            ),
-            (paths["command"], (ROOT / ".cursor/commands/play-quran.md").read_bytes(), 0o644),
-        ]
+    helper = (ROOT / ".agents/skills/play-quran/scripts/play_quran.py").read_bytes()
+    installation = json.dumps({"executable": str(paths["bin"])}).encode()
+    for destination, origin in (
+        (paths["skill"], ROOT / ".agents/skills/play-quran"),
+        (paths["claude_skill"], ROOT / ".claude/skills/play-quran"),
+    ):
+        sources.extend(
+            [
+                (destination / "SKILL.md", (origin / "SKILL.md").read_bytes(), 0o644),
+                (destination / "scripts/play_quran.py", helper, 0o755),
+                (destination / "scripts/installation.json", installation, 0o600),
+            ]
+        )
+    sources.append(
+        (paths["command"], (ROOT / ".cursor/commands/play-quran.md").read_bytes(), 0o644)
     )
     manifest = {**OWNER, "files": list(previous["files"])}
     for path, content, mode in sources:
@@ -242,6 +245,7 @@ def install(home: Path, *, offline: bool = False, wheel: Path | None = None) -> 
     dependency_message()
     print(f"Installed CLI: {paths['bin']}")
     print(f"Installed shared Codex/Cursor skill: {paths['skill']}")
+    print(f"Installed Claude Code skill (/play-quran): {paths['claude_skill']}")
     print(f"Installed Cursor command compatibility adapter: {paths['command']}")
     if str(paths["bin"].parent) not in os.environ.get("PATH", "").split(os.pathsep):
         print(f"Add {paths['bin'].parent} to PATH to invoke play-quran by name.")

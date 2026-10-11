@@ -13,6 +13,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from .config import private_dir
 from .errors import QuranFlowError
 from .reciters import Edition, Reciter, validate_server
 
@@ -138,8 +139,8 @@ class Provider:
             return
         temporary: str | None = None
         try:
-            self.cache_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-            os.chmod(self.cache_dir, 0o700)
+            # Same checks as config storage: no symlinked or foreign-owned cache directory.
+            private_dir(self.cache_dir)
             with tempfile.NamedTemporaryFile(
                 "w", encoding="utf-8", dir=self.cache_dir, prefix=".catalog-", delete=False
             ) as handle:
@@ -150,7 +151,7 @@ class Provider:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, self.cache_file)
-        except OSError as exc:
+        except (OSError, QuranFlowError) as exc:
             LOGGER.warning("Metadata cache could not be written: %s", exc)
         finally:
             if temporary:

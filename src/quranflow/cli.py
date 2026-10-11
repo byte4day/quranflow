@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 from dataclasses import asdict
 from typing import Any
 
@@ -58,14 +59,40 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--refresh", action="store_true", help="Refresh provider metadata")
     result.add_argument("--json", action="store_true", help="Machine-readable output")
+    result.add_argument(
+        "--brief",
+        action="store_true",
+        help="One-line output for agents; never opens menus and waits briefly for audio",
+    )
     result.add_argument("--debug", action="store_true", help="Enable diagnostic logging to stderr")
     result.add_argument("--version", action="version", version=f"QuranFlow {__version__}")
     return result
 
 
-def emit(data: Any, json_mode: bool, *, status: bool = False) -> None:
+def brief_line(data: dict[str, Any]) -> str:
+    """A single low-token status line for agents and scripts."""
+    track = data.get("track") if isinstance(data.get("track"), dict) else None
+    parts = [str(data.get("status", "stopped"))]
+    if track:
+        parts += [
+            f"{int(track['surah']):03d} {track['name']}",
+            str(track["reciter"]),
+            str(track["edition"]),
+        ]
+    if data.get("volume") is not None:
+        parts.append(f"vol {data['volume']}")
+    if data.get("note"):
+        parts.append(str(data["note"]))
+    if data.get("error"):
+        parts.append(f"error: {data['error']}")
+    return plain(" · ".join(parts))
+
+
+def emit(data: Any, json_mode: bool, *, status: bool = False, brief: bool = False) -> None:
     if json_mode:
         print(json.dumps(data, ensure_ascii=False, indent=2))
+    elif status and brief:
+        print(brief_line(data))
     elif status:
         print_status(data)
     elif isinstance(data, list):
@@ -114,8 +141,22 @@ def _config(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str,
     return asdict(config.update(**{key: value}))
 
 
+def _interactive(args: argparse.Namespace) -> bool:
+    return not args.brief and not args.json and sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _default_edition(editions: list[Any], remembered: int) -> Any:
+    """Agents cannot answer a menu: prefer the remembered, then a Murattal recording."""
+    return next(
+        (e for e in editions if e.id == remembered),
+        next((e for e in editions if "murattal" in e.name.casefold()), editions[0]),
+    )
+
+
 def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, Any]:
     settings = config.load()
+    interactive = _interactive(args)
+    notes: list[str] = []
     volume = settings.volume if args.volume is None else int(validate("volume", args.volume))
     if args.edition is not None and args.edition < 1:
         raise QuranFlowError("--edition must be a positive provider recording ID.")
@@ -127,7 +168,7 @@ def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, A
     previous = Player(paths.runtime).status() if args.action == "change" else {}
     current = previous.get("track") or {}
     surah_query = args.surah or positional
-    if not surah_query and (args.last or args.action == "change"):
+    if not surah_query and (args.last or args.action == "change" or not interactive):
         surah_query = str(current.get("surah", settings.last_surah))
     if surah_query:
         surah = resolve_surah(surah_query)
@@ -144,14 +185,19 @@ def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, A
         )
     catalog = prioritize_reciters(_provider(paths, settings).catalog(refresh=args.refresh))
     query = args.reciter
-    if not query and (args.last or args.action == "change"):
+    if not query and (args.last or args.action == "change" or not interactive):
         query = str(current.get("reciter_id") or settings.default_reciter)
+    # Only offer reciters that actually have this recording, with remembered choice first.
+    available = [r for r in catalog if any(surah.id in e.surahs for e in r.editions)]
     if query:
         reciter = resolve_reciter(query, catalog)
+    elif not interactive:
+        if not available:
+            raise QuranFlowError(f"No reciter has a recording of {surah.name}.")
+        reciter = available[0]
+        notes.append("no reciter remembered; chose the first listed — pass --reciter to change")
     else:
         preferred = next((r for r in catalog if str(r.id) == settings.default_reciter), None)
-        # Only offer reciters that actually have this recording, with remembered choice first.
-        available = [r for r in catalog if any(surah.id in e.surahs for e in r.editions)]
         reciter = select("Choose a reciter", available, lambda r: f"{r.id:3d}  {r.name}", preferred)
     editions = [e for e in reciter.editions if surah.id in e.surahs]
     if not editions:
@@ -166,6 +212,9 @@ def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, A
     edition_id = args.edition
     if edition_id is None and not args.reciter and (args.last or args.action == "change"):
         edition_id = int(current.get("edition_id", settings.last_edition)) or None
+        if edition_id is not None and all(e.id != edition_id for e in editions):
+            # A remembered edition from another reciter/Surah is a default, not an order.
+            edition_id = None
     if edition_id is not None:
         edition = next((e for e in editions if e.id == edition_id), None)
         if edition is None:
@@ -175,6 +224,8 @@ def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, A
             )
     elif len(editions) == 1:
         edition = editions[0]
+    elif not interactive:
+        edition = _default_edition(editions, settings.last_edition)
     else:
         edition = select(
             "Choose a recording edition",
@@ -201,8 +252,22 @@ def _play(args: argparse.Namespace, config: Config, paths: Paths) -> dict[str, A
                 "url": audio_url(edition, number),
             }
         )
-    result = Player(paths.runtime).play(tracks, volume=volume)
+    player = Player(paths.runtime)
+    result = player.play(tracks, volume=volume)
     config.update(last_surah=surah.id, default_reciter=str(reciter.id), last_edition=edition.id)
+    if args.brief:
+        result = _settle(player, result)
+    if notes:
+        result = dict(result, note="; ".join(notes))
+    return result
+
+
+def _settle(player: Player, result: dict[str, Any], seconds: float = 6.0) -> dict[str, Any]:
+    """Wait briefly for audio so an agent needs no follow-up status call."""
+    deadline = time.monotonic() + seconds
+    while result.get("status") == "loading" and time.monotonic() < deadline:
+        time.sleep(0.25)
+        result = player.status()
     return result
 
 
@@ -263,9 +328,9 @@ def run(args: argparse.Namespace) -> None:
             if args.values or any((args.surah, args.reciter, args.edition, args.last)):
                 raise QuranFlowError(f"Unexpected selection arguments for {action}.")
             data = getattr(player, action)()
-        emit(data, args.json, status=True)
+        emit(data, args.json, status=True, brief=args.brief)
     else:
-        emit(_play(args, config, paths), args.json, status=True)
+        emit(_play(args, config, paths), args.json, status=True, brief=args.brief)
 
 
 def main(argv: list[str] | None = None) -> int:

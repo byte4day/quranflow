@@ -33,6 +33,8 @@ def main() -> int:
         "scripts/uninstall.py",
         ".agents/skills/play-quran/SKILL.md",
         ".agents/skills/play-quran/scripts/play_quran.py",
+        ".claude/skills/play-quran/SKILL.md",
+        ".claude/skills/play-quran/scripts/play_quran.py",
         ".cursor/commands/play-quran.md",
         ".github/workflows/ci.yml",
     ]

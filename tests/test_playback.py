@@ -155,7 +155,7 @@ def test_status_uses_playlist_id_for_autoplay(player, state, track, monkeypatch)
         "playlist": [{"id": 9, "playing": True}],
         "idle-active": False,
         "pause": False,
-        "volume": 33,
+        "volume": 33.0,
         "time-pos": 8.0,
         "duration": 900.0,
     }
@@ -163,7 +163,7 @@ def test_status_uses_playlist_id_for_autoplay(player, state, track, monkeypatch)
     result = player.status()
     assert result["track"]["surah"] == 37
     assert result["status"] == "playing"
-    assert result["volume"] == 33
+    assert result["volume"] == 33 and type(result["volume"]) is int
 
 
 @pytest.mark.parametrize(

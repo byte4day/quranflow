@@ -30,7 +30,7 @@ dev = ["pytest==9.1.1", "ruff==0.16.10"]
 packages = ["src/quranflow"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/scripts", "/docs", "/.agents", "/.cursor", "/.github", "/README.md", "/CONTRIBUTING.md", "/CHANGELOG.md", "/SECURITY.md", "/AGENTS.md", "/install.sh", "/uninstall.sh", "/pyproject.toml", "/LICENSE", "/.gitignore"]
+include = ["/src", "/tests", "/scripts", "/docs", "/.agents", "/.claude", "/.cursor", "/.github", "/README.md", "/CONTRIBUTING.md", "/CHANGELOG.md", "/SECURITY.md", "/AGENTS.md", "/install.sh", "/uninstall.sh", "/pyproject.toml", "/LICENSE", "/.gitignore"]
 exclude = ["/video", "**/node_modules", "**/__pycache__", "**/*.pyc", "**/installation.json"]
 
 [tool.pytest.ini_options]

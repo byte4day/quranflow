@@ -1,49 +1,27 @@
 ---
 name: play-quran
-description: Play and control background Qur'an recitation with QuranFlow when the user requests a Surah, reciter, or playback control while coding.
+description: Play, pause, resume, stop or change background Qur'an recitation (QuranFlow). Use when the user asks to play a Surah or reciter, or to control Qur'an playback.
 ---
 
 # QuranFlow
 
-Use the installed QuranFlow CLI through `scripts/play_quran.py` beside this skill.
-It uses the same playback engine as the standalone terminal command, and returns
-after starting an independent background player. Run the helper with Python 3
-and argument arrays; preserve the user's Surah, reciter, edition, and control
-arguments. Never construct a shell command from untrusted text.
-
-Examples (resolve the helper relative to this SKILL.md, not the working repository):
+Run exactly one command with the helper beside this file (resolve the path relative to
+this SKILL.md, not the working repository), then reply with its single output line:
 
 ```text
-python3 <skill-directory>/scripts/play_quran.py yasin --reciter dosari
-python3 <skill-directory>/scripts/play_quran.py --surah 18 --reciter dosari
-python3 <skill-directory>/scripts/play_quran.py pause
-python3 <skill-directory>/scripts/play_quran.py resume
-python3 <skill-directory>/scripts/play_quran.py stop
-python3 <skill-directory>/scripts/play_quran.py status
+python3 <skill-directory>/scripts/play_quran.py --brief <args>
 ```
 
-An agent shell is usually noninteractive. When the user has not selected a Surah,
-run `surahs --json` through the helper and ask them to choose. When the reciter is
-missing, inspect `config --json` for `default_reciter`; pass that remembered ID
-with `--reciter`. If none is configured, run `reciters --json` and offer the
-provider's available reciters. The standalone CLI
-opens its keyboard selector only in a real terminal. Do not launch an interactive
-selector in an agent shell or claim that it was shown to the user.
+- `<args>`: the user's choices as separate arguments, never one shell string built from
+  their text. Examples: `yasin --reciter dosari`, `--surah 18`, `pause`, `resume`,
+  `stop`, `status`, `replay`, `volume 40`, `change --reciter alafasy`.
+- No Surah or reciter given: pass only what was given. `--brief` reuses the remembered
+  Surah, reciter and edition and never opens a menu; it waits a few seconds for audio, so
+  no follow-up `status` call is needed.
+- Do not run `status`, `--help`, `config`, `reciters` or `surahs` first.
+- Report an error line honestly in one sentence. Do not substitute another reciter; offer
+  `reciters --surah N` output only when the user asks for options.
+- Missing install: tell the user to run `./install.sh` in their QuranFlow checkout. Never
+  install system packages.
 
-For multiple suitable recordings, list
-`reciters --reciter NAME --surah NUMBER --json` and ask the user to choose an
-edition, unless their remembered `last_edition` is available for this selection.
-Pass the chosen `--edition ID`. If the
-provider reports that the Surah is unavailable for that reciter, explain this and
-offer only the alternatives it returns. Do not silently substitute a reciter or
-invent an audio URL. Use `status` after starting playback; report any network,
-backend, or audio-device error honestly. Starting a process alone does not prove
-that audio is audible.
-
-The global installation records an absolute executable path beside the helper;
-it works from unrelated repositories. If QuranFlow is missing, explain that the
-user must run `./install.sh` from their QuranFlow checkout. Do not install system
-packages or alter agent permissions to play audio.
-
-Codex invokes this skill with `$play-quran`; Cursor supports `/play-quran` through
-its shared skill discovery. A native Codex `/play-quran` alias is not provided.
+Codex: `$play-quran`. Cursor: `/play-quran`. Claude Code: `/play-quran`.

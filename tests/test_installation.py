@@ -39,8 +39,11 @@ def test_installs_absolute_shared_skill_and_callable_launcher(
 ) -> None:
     manifest = install.install(tmp_path)
     paths = install.directories(tmp_path)
-    assert len(manifest["files"]) == 5
+    assert len(manifest["files"]) == 8
     configuration = json.loads((paths["skill"] / "scripts/installation.json").read_text())
+    claude = paths["claude_skill"]
+    assert (claude / "SKILL.md").read_text().startswith("---\nname: play-quran")
+    assert json.loads((claude / "scripts/installation.json").read_text()) == configuration
     assert configuration["executable"] == str(paths["bin"])
     assert paths["bin"].stat().st_mode & 0o111
     assert str(paths["venv"] / "bin/play-quran") in paths["bin"].read_text()

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — 2026-10-11
+
+- Claude Code skill `/play-quran` installed to `~/.claude/skills/play-quran`.
+- `--brief`: one-line output, no menus, waits up to 6 s for audio so agents need one call.
+- Agent shells reuse the remembered Surah/reciter/edition instead of failing on a menu;
+  multiple editions default to the remembered, then Murattal, recording.
+- A stale remembered edition no longer blocks `--last`/`change`.
+- Status volume shows `65`, not mpv's `65.0`.
+- Metadata cache refuses symlinked or foreign-owned directories.
+- Codex/Cursor instructions slimmed to the same single-call flow.
+
 ## 0.1.0 — 2026-10-11
 
 - Standalone `play-quran` CLI with searchable bilingual selection of all 114 Surahs.

@@ -236,7 +236,9 @@ class Player:
         result["status"] = (
             "loading" if idle else "paused" if self._property(state, "pause", False) else "playing"
         )
-        result["volume"] = self._property(state, "volume", result["volume"])
+        volume = self._property(state, "volume", result["volume"])
+        # mpv reports volume as a float (65.0); keep the integer users set.
+        result["volume"] = round(volume) if isinstance(volume, (int, float)) else volume
         result["time_pos"] = self._property(state, "time-pos")
         result["duration"] = self._property(state, "duration")
         if result["time_pos"] is None and result["status"] == "playing":

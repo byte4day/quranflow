@@ -1,6 +1,6 @@
 # QuranFlow
 
-Qur'an recitation for developers working in terminals, Cursor and OpenAI Codex.
+Qur'an recitation for developers working in terminals, Claude Code, Cursor and OpenAI Codex.
 Choose a Surah and a reciter, then continue coding while mpv streams in the background.
 
 QuranFlow is a small Linux Python CLI with no runtime Python dependencies, web UI,
@@ -13,7 +13,8 @@ server or telemetry. All three interfaces use the same playback engine.
 - Searchable keyboard menu with a plain input fallback and machine-readable output.
 - Detached playback, pause, resume, stop, volume, replay and changes of Surah or reciter.
 - Remembered selections, validated settings, cached metadata and optional next-Surah autoplay.
-- User-scoped CLI, Codex Agent Skill and Cursor command installation with conflict backups.
+- User-scoped CLI, Claude Code skill, Codex Agent Skill and Cursor command installation with conflict backups.
+- `--brief` agent mode: one command, one output line, no menus, no follow-up status call.
 
 ## Requirements and installation
 
@@ -89,6 +90,18 @@ may be `loading`; use `status` to confirm playback or see a later network/audio 
 Stopping the invoking agent or closing the conversation does not stop detached mpv.
 Logout may end your audio session or remove the XDG runtime directory, so cross-login
 playback is not guaranteed.
+
+## Claude Code setup
+
+`./install.sh` installs `~/.claude/skills/play-quran/` (the repository also ships it in
+`.claude/skills/` for project discovery). Restart Claude Code, then type
+`/play-quran yasin --reciter dosari`, `/play-quran pause`, or just ask "play Surah Kahf".
+
+The skill is built to cost almost nothing per request: Claude runs a single pre-approved
+command (`play_quran.py --brief …`), gets one status line back, and replies with that
+line. No catalog listing, no `--help`, no status polling. With no Surah or reciter given,
+the remembered choices play. Arguments are passed as separate words; the skill never
+interpolates your text into a shell command.
 
 ## Codex setup
 

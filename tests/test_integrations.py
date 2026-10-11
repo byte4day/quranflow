@@ -13,6 +13,17 @@ def test_skill_is_discoverable_with_valid_required_frontmatter() -> None:
     assert (skill.parent / "scripts/play_quran.py").is_file()
 
 
+def test_claude_skill_matches_shared_helper_and_is_low_token() -> None:
+    claude = ROOT / ".claude/skills/play-quran"
+    text = (claude / "SKILL.md").read_text(encoding="utf-8")
+    assert text.startswith("---\nname: play-quran\n")
+    assert "allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/play_quran.py *)" in text
+    assert "--brief" in text and "!`" not in text  # no shell interpolation of $ARGUMENTS
+    assert len(text.split()) < 250
+    shared = ROOT / ".agents/skills/play-quran/scripts/play_quran.py"
+    assert (claude / "scripts/play_quran.py").read_bytes() == shared.read_bytes()
+
+
 def test_cursor_adapter_and_install_entrypoints_are_packaged() -> None:
     assert (ROOT / ".cursor/commands/play-quran.md").is_file()
     for filename in ("install.sh", "uninstall.sh"):
